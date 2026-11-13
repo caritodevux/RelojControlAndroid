@@ -1,4 +1,4 @@
-package com.ejemplo.relojcontroliot
+package com.example.relojcontrolandroid
 
 import android.os.Bundle
 import android.widget.Button
@@ -17,14 +17,20 @@ class ResultadoMarcajeActivity : AppCompatActivity() {
         tvMensajeResultado = findViewById(R.id.tvMensajeResultado)
         btnVolver = findViewById(R.id.btnVolver)
 
-        // Captura de datos transmitidos por el Intent desde MainActivity [8, 22]
-        val idEmpleado = intent.getStringExtra("ID_EMPLEADO") ?: "Desconocido"
-        val horaMarcaje = intent.getStringExtra("HORA_MARCAJE") ?: "--:--"
+        val idEmpleado =
+            intent.getStringExtra("ID_EMPLEADO") ?: "Desconocido"
 
-        tvMensajeResultado.text = "¡MARCAJE REGISTRADO!\n\nEmpleado: $idEmpleado\nHora: $horaMarcaje"
+        val horaMarcaje =
+            intent.getStringExtra("HORA_MARCAJE") ?: "--:--"
+
+        tvMensajeResultado.text =
+            "¡SOLICITUD ENVIADA!\n\n" +
+                    "Empleado: $idEmpleado\n" +
+                    "Hora de envío: $horaMarcaje\n\n" +
+                    "Solicitud transmitida al tótem."
 
         btnVolver.setOnClickListener {
-            finish() // Libera la Activity y retorna a la pantalla anterior [14, 23]
+            finish()
         }
     }
 }

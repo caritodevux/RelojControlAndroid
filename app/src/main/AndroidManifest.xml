@@ -1,32 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="[suspicious link removed]"
-    package="com.ejemplo.relojcontroliot">
 
-    <uses-permission android:name="android.permission.BLUETOOTH" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Compatibilidad con Android 11 o anteriores -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
+    <!-- Android 12 o superior -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_CONNECT" />
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Reloj Control IoT"
-        android:theme="@style/Theme.MaterialComponents.DayNight.DarkActionBar">
+        android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
 
-        <!-- Activity Principal (Launcher) -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
 
-        <!-- Segunda Activity de Confirmación -->
         <activity
             android:name=".ResultadoMarcajeActivity"
             android:exported="false" />
 
     </application>
+
 </manifest>
