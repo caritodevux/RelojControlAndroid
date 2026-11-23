@@ -24,8 +24,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 
 class MainActivity : AppCompatActivity() {
+
+    // Administrador del inicio de sesión con Google
+    private lateinit var googleAuthManager: GoogleAuthManager
 
     companion object {
         private const val REQUEST_BT_PERMISSION = 101
@@ -48,16 +56,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var etIdEmpleado: EditText
     private lateinit var btnConectarBT: Button
     private lateinit var btnMarcarAsistencia: Button
+    private lateinit var btnGoogleLogin: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        googleAuthManager = GoogleAuthManager(this)
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
 
         vincularVistasUI()
         configurarListeners()
         actualizarInterfazModo()
+
+        // Firebase mantiene la sesión iniciada entre aperturas de la app.
+        if (FirebaseAuth.getInstance().currentUser != null) {
+            btnGoogleLogin.text = "Sesión iniciada con Google"
+        }
     }
 
     private fun vincularVistasUI() {
@@ -67,6 +83,7 @@ class MainActivity : AppCompatActivity() {
         btnConectarBT = findViewById(R.id.btnConectarBT)
         btnMarcarAsistencia =
             findViewById(R.id.btnMarcarAsistencia)
+        btnGoogleLogin = findViewById(R.id.btnGoogleLogin)
     }
 
     private fun configurarListeners() {
@@ -106,6 +123,47 @@ class MainActivity : AppCompatActivity() {
                     "Formato esperado: EMP-1042"
             } else {
                 confirmarYEnviarMarcaje(idEmpleado)
+            }
+        }
+
+        // Inicio de sesión con Google
+        btnGoogleLogin.setOnClickListener {
+
+            btnGoogleLogin.isEnabled = false
+            btnGoogleLogin.text = "Conectando con Google..."
+
+            try {
+                googleAuthManager.iniciarSesion(
+                    onExito = { usuario ->
+                        btnGoogleLogin.isEnabled = true
+                        btnGoogleLogin.text = "Sesión iniciada con Google"
+
+                        Toast.makeText(
+                            this,
+                            "Sesión iniciada: ${usuario.email}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    },
+                    onError = { mensaje ->
+                        btnGoogleLogin.isEnabled = true
+                        btnGoogleLogin.text = "Iniciar sesión con Google"
+
+                        Toast.makeText(
+                            this,
+                            mensaje,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                )
+            } catch (e: Exception) {
+                btnGoogleLogin.isEnabled = true
+                btnGoogleLogin.text = "Iniciar sesión con Google"
+
+                Toast.makeText(
+                    this,
+                    "No se pudo iniciar Google Login: ${e.message}",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }
@@ -176,6 +234,8 @@ class MainActivity : AppCompatActivity() {
         Handler(Looper.getMainLooper()).postDelayed({
 
             if (isFinishing || isDestroyed) return@postDelayed
+
+            guardarAsistenciaFirebase(idEmpleado)
 
             abrirPantallaResultado(
                 idEmpleado = idEmpleado,
@@ -418,6 +478,8 @@ class MainActivity : AppCompatActivity() {
 
                     btnMarcarAsistencia.isEnabled = true
 
+                    guardarAsistenciaFirebase(idEmpleado)
+
                     abrirPantallaResultado(
                         idEmpleado = idEmpleado,
                         esDemo = false
@@ -524,5 +586,107 @@ class MainActivity : AppCompatActivity() {
         cerrarConexionBluetooth()
 
         super.onDestroy()
+    }
+
+    // -------------------------------------------------
+    // FIREBASE
+    // -------------------------------------------------
+
+    private fun guardarAsistenciaFirebase(idEmpleado: String) {
+
+        val usuario = FirebaseAuth.getInstance().currentUser
+
+        if (usuario == null) {
+            Toast.makeText(
+                this,
+                "Debe iniciar sesión con Google primero",
+                Toast.LENGTH_LONG
+            ).show()
+            return
+        }
+
+        val ahora = Date()
+
+        val fecha = SimpleDateFormat(
+            "yyyy-MM-dd",
+            Locale.getDefault()
+        ).format(ahora)
+
+        val hora = SimpleDateFormat(
+            "HH:mm:ss",
+            Locale.getDefault()
+        ).format(ahora)
+
+        val asistencia = mapOf(
+            "empleado" to idEmpleado,
+            "correo" to usuario.email,
+            "estado" to "Entrada",
+            "fecha" to fecha,
+            "hora" to hora
+        )
+
+        FirebaseDatabase.getInstance()
+            .getReference("usuarios")
+            .child(usuario.uid)
+            .child("asistencias")
+            .push()
+            .setValue(asistencia)
+            .addOnSuccessListener {
+                Toast.makeText(
+                    this,
+                    "Asistencia guardada correctamente",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+            .addOnFailureListener { error ->
+                Toast.makeText(
+                    this,
+                    "Error al guardar: ${error.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+    }
+
+    private fun leerAsistenciasFirebase() {
+
+        val usuario = FirebaseAuth.getInstance().currentUser
+
+        if (usuario != null) {
+
+            val referencia = FirebaseDatabase.getInstance()
+                .getReference("usuarios")
+                .child(usuario.uid)
+                .child("asistencias")
+
+            referencia.addValueEventListener(
+
+                object : ValueEventListener {
+
+                    override fun onDataChange(snapshot: DataSnapshot) {
+
+                        for (registro in snapshot.children) {
+
+                            val estado = registro.child("estado")
+                                .getValue(String::class.java)
+
+                            val fecha = registro.child("fecha")
+                                .getValue(String::class.java)
+
+                            val hora = registro.child("hora")
+                                .getValue(String::class.java)
+
+                            println("Estado: $estado")
+                            println("Fecha: $fecha")
+                            println("Hora: $hora")
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+
+                        println("Error: ${error.message}")
+                    }
+                }
+            )
+        }
     }
 }
