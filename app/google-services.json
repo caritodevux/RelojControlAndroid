@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "5305077045",
+    "project_id": "relojcontrolfirebase",
+    "storage_bucket": "relojcontrolfirebase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:5305077045:android:9f0efd98d7f61f7de5507c",
+        "android_client_info": {
+          "package_name": "com.example.relojcontrolandroid"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "5305077045-21rhshnee6rmbiakjmidsunufj2brdqj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.relojcontrolandroid",
+            "certificate_hash": "e07c5a733516abb2fa637cfb40d264b70db14461"
+          }
+        },
+        {
+          "client_id": "5305077045-oqfk59s1h6mhvm9u5i16erfmb7788bnv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKE2Z-y2IHU1cjXcjztCz3xRjG3EiC1Dg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "5305077045-oqfk59s1h6mhvm9u5i16erfmb7788bnv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
