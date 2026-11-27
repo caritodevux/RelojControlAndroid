@@ -3,7 +3,8 @@ package com.example.relojcontrolandroid.totem
 /** Planificador para pruebas: el tiempo avanza solo cuando la prueba llama a [avanzar]. */
 class PlanificadorManual : Planificador {
 
-    var ahora = 1_000_000L
+    /** Parte el 27-11-2026 a las 11:00 UTC. */
+    var ahora = 1_795_777_200_000L
         private set
 
     private data class Tarea(val cuando: Long, val accion: () -> Unit, var cancelada: Boolean = false)

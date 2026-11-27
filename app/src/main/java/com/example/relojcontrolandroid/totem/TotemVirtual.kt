@@ -9,7 +9,7 @@ import java.util.TimeZone
  * Tótem simulado dentro de la app. Recibe las mismas líneas que recibiría el Arduino
  * y contesta con el mismo formato, después de [demoraMs] (1 segundo por defecto).
  *
- * Revisa DUPLICADO y SECUENCIA consultando el último marcaje del trabajador en el
+ * Revisa DUPLICADO y SECUENCIA (misma entrada o salida dos veces el mismo día) consultando el último marcaje del trabajador en el
  * [repositorio]. No guarda nada: guardar es trabajo de la app después de un OK.
  */
 class TotemVirtual(
@@ -17,7 +17,7 @@ class TotemVirtual(
     private val planificador: Planificador,
     private val reloj: () -> Long = { System.currentTimeMillis() },
     private val demoraMs: Long = 1_000L,
-    zonaHoraria: TimeZone = TimeZone.getDefault()
+    private val zonaHoraria: TimeZone = TimeZone.getDefault()
 ) : CanalTotem {
 
     /** true mientras procesa un MARCA; otro MARCA en ese momento recibe OCUPADO. */
@@ -66,7 +66,7 @@ class TotemVirtual(
             repositorio.ultimoMarcaje(
                 comando.idEmpleado,
                 alObtener = { ultimo ->
-                    val error = ReglasMarcaje.validar(ultimo, comando.tipo, reloj())
+                    val error = ReglasMarcaje.evaluar(ultimo, comando.tipo, reloj(), zonaHoraria).error
                     val respuesta = if (error != null) {
                         Respuesta.Error(comando.numero, error)
                     } else {

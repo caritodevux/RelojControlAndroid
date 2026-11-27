@@ -13,14 +13,16 @@ class TotemVirtualTest {
     private lateinit var repositorio: RepositorioMarcajesEnMemoria
     private lateinit var totem: TotemVirtual
     private lateinit var servicio: ServicioMarcaje
+    private val utc = TimeZone.getTimeZone("UTC")
+    private val unDia = 24 * 60 * 60 * 1000L
 
     @Before
     fun preparar() {
         planificador = PlanificadorManual()
         repositorio = RepositorioMarcajesEnMemoria()
         val reloj = { planificador.ahora }
-        totem = TotemVirtual(repositorio, planificador, reloj, zonaHoraria = TimeZone.getTimeZone("UTC"))
-        servicio = ServicioMarcaje(totem, repositorio, planificador, reloj)
+        totem = TotemVirtual(repositorio, planificador, reloj, zonaHoraria = utc)
+        servicio = ServicioMarcaje(totem, repositorio, planificador, reloj, zonaHoraria = utc)
     }
 
     /** Marca y avanza el tiempo hasta tener resultado. */
@@ -64,11 +66,62 @@ class TotemVirtualTest {
         assertEquals(1, repositorio.todos().size)
     }
 
+    private fun exitoso(resultado: ResultadoMarcaje) = resultado as ResultadoMarcaje.Exitoso
+
     @Test
-    fun salidaSinEntradaEsSecuencia() {
+    fun jornadaNormalNoDejaObservaciones() {
+        assertTrue(exitoso(marcar(TipoMarcaje.ENTRADA)).observaciones.isEmpty())
+        planificador.avanzar(8 * 60 * 60 * 1000L)
+        assertTrue(exitoso(marcar(TipoMarcaje.SALIDA)).observaciones.isEmpty())
+    }
+
+    @Test
+    fun salidaSinEntradaSePermiteYDejaConstancia() {
+        val r = exitoso(marcar(TipoMarcaje.SALIDA))
+        assertEquals(listOf(Observacion(TipoObservacion.ENTRADA_NO_REGISTRADA, "27-11-2026")), r.observaciones)
+        assertEquals(
+            "No se registró la marcación de entrada del día 27-11-2026. Contáctese con jefatura para su justificación.",
+            r.observaciones[0].mensaje
+        )
+        // La constancia queda guardada junto al marcaje.
+        assertEquals(r.observaciones, repositorio.todos().single().observaciones)
+    }
+
+    @Test
+    fun olvidoLaSalidaAyerYMarcaEntradaHoy() {
+        marcar(TipoMarcaje.ENTRADA)            // 27-11 sin salida
+        planificador.avanzar(unDia)
+        val r = exitoso(marcar(TipoMarcaje.ENTRADA))  // 28-11
+        assertEquals(listOf(Observacion(TipoObservacion.SALIDA_NO_REGISTRADA, "27-11-2026")), r.observaciones)
+        assertEquals(
+            "Se esperaba la marcación de salida del día 27-11-2026 y no se registró. Contáctese con jefatura para su justificación.",
+            r.observaciones[0].mensaje
+        )
+    }
+
+    @Test
+    fun olvidoSalidaAyerYEntradaHoyDejaDosObservaciones() {
+        marcar(TipoMarcaje.ENTRADA)            // 27-11 sin salida
+        planificador.avanzar(unDia)
+        val r = exitoso(marcar(TipoMarcaje.SALIDA))   // 28-11 sin entrada
+        assertEquals(
+            listOf(
+                Observacion(TipoObservacion.SALIDA_NO_REGISTRADA, "27-11-2026"),
+                Observacion(TipoObservacion.ENTRADA_NO_REGISTRADA, "28-11-2026")
+            ),
+            r.observaciones
+        )
+    }
+
+    @Test
+    fun dosSalidasElMismoDiaEsSecuencia() {
+        marcar(TipoMarcaje.ENTRADA)
+        planificador.avanzar(60 * 60 * 1000L)
+        marcar(TipoMarcaje.SALIDA)
+        planificador.avanzar(10 * 60 * 1000L)
         val r = marcar(TipoMarcaje.SALIDA)
         assertEquals(CodigoError.SECUENCIA, codigoDe(r))
-        assertEquals("Primero debes marcar entrada", (r as ResultadoMarcaje.Fallido).mensaje)
+        assertEquals("Ya registraste tu salida hoy", (r as ResultadoMarcaje.Fallido).mensaje)
     }
 
     @Test
@@ -77,7 +130,7 @@ class TotemVirtualTest {
         planificador.avanzar(10 * 60 * 1000L) // 10 minutos: ya no es duplicado
         val r = marcar(TipoMarcaje.ENTRADA)
         assertEquals(CodigoError.SECUENCIA, codigoDe(r))
-        assertEquals("Ya tienes una entrada registrada", (r as ResultadoMarcaje.Fallido).mensaje)
+        assertEquals("Ya registraste tu entrada hoy", (r as ResultadoMarcaje.Fallido).mensaje)
     }
 
     @Test
@@ -139,13 +192,16 @@ class TotemVirtualTest {
                 alResponder("OK|${c.numero}|${c.idEmpleado}|${c.tipo.codigo}|08:00:00\n")
             }
         }
-        servicio = ServicioMarcaje(arduino, repositorio, planificador, { planificador.ahora }, validarEnApp = true)
-
-        assertEquals(CodigoError.SECUENCIA, codigoDe(marcar(TipoMarcaje.SALIDA)))
-        assertTrue(lineasEnviadas.isEmpty()) // no llegó a enviarse
+        servicio = ServicioMarcaje(
+            arduino, repositorio, planificador, { planificador.ahora }, validarEnApp = true, zonaHoraria = utc
+        )
 
         assertTrue(marcar(TipoMarcaje.ENTRADA) is ResultadoMarcaje.Exitoso)
         assertEquals(listOf("MARCA|1|EMP-1042|E\n"), lineasEnviadas)
+
+        planificador.avanzar(10 * 60 * 1000L)
+        assertEquals(CodigoError.SECUENCIA, codigoDe(marcar(TipoMarcaje.ENTRADA)))
+        assertEquals(1, lineasEnviadas.size) // la segunda entrada no llegó a enviarse
     }
 
     @Test

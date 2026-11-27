@@ -1,10 +1,14 @@
 package com.example.relojcontrolandroid.totem
 
-/** Un marcaje ya registrado. [instante] en milisegundos (System.currentTimeMillis()). */
+/**
+ * Un marcaje ya registrado. [instante] en milisegundos (System.currentTimeMillis()).
+ * [observaciones] deja constancia de marcaciones faltantes (por ejemplo, la salida de ayer).
+ */
 data class Marcaje(
     val idEmpleado: String,
     val tipo: TipoMarcaje,
-    val instante: Long
+    val instante: Long,
+    val observaciones: List<Observacion> = emptyList()
 )
 
 /**
